@@ -33,6 +33,7 @@ public final class SystemManager {
     private Hashtable<String, User> users;
     private double profit;
     private List<Order> orders;
+    private Hashtable<Integer,Shop> shops;
 
     private SystemManager() {
         if (Files.exists(dataPath)) {
@@ -42,23 +43,31 @@ public final class SystemManager {
                 users = data.users();
                 profit = data.profit();
                 orders = data.orders();
+                shops = new Hashtable<>();
+                for (Map.Entry<String,User> entry : users.entrySet()) {
+                    if(entry.getValue().getRole() == UserRole.Customer){
+                        Customer c = (Customer) entry.getValue();
+                        if(c.getOwnedShop()!=null){
+                            shops.put(c.getOwnedShop().getId(),c.getOwnedShop());
+                        }
+                    }
+
+                }
                 for (Order order : orders) {
                     Customer customer = order.getCustomer();
                     if (customer != null) {
-                        customer.addOrder(order);
+                        users.get(customer.getUsername()).addOrder(order);
                     }
 
                     Shipper shipper = order.getShipper();
                     if (shipper != null) {
-                        shipper.addOrder(order);
+                        users.get(shipper.getUsername()).addOrder(order);
                     }
-
                     Shop shop = order.getShop();
-                    if (shop != null) {
-                        shop.addOrder(order);
+                    if(shop != null){
+                        shops.get(shop.getId()).addOrder(order);
                     }
                 }
-
             } catch (Exception e) {
                 System.out.println(e.getMessage());
 //                e.printStackTrace();
@@ -413,6 +422,7 @@ public final class SystemManager {
             System.out.println("2. Add/Delete item");
             System.out.println("3. Take Orders");
             System.out.println("4. Transfer money to account");
+            System.out.println("5. View Order");
             System.out.println("Other key to exit.");
 
             String choice = Utils.promptInput("Enter your choice: ");
@@ -437,12 +447,18 @@ public final class SystemManager {
                     }
                     break;
                 case "3":
+                    System.out.println("/" + System.identityHashCode(c.getOwnedShop()));
                     acceptOrderByShop(c.getOwnedShop());
                     break;
                 case "4":
                     c.addBalance(c.getOwnedShop().getRevenue());
                     c.getOwnedShop().setRevenue(0);
                     System.out.println("Transfer successfully!");
+                    break;
+                case "5":
+                    for(Order order : c.getOwnedShop().getOrders()){
+                        System.out.println(order);
+                    }
                     break;
                 default:
                     System.out.println("Exit shop menu.");
@@ -473,7 +489,7 @@ public final class SystemManager {
     }
 
     private void acceptOrderByShop(Shop shop) {
-        List<Order> ordersByThisShop = shop.getShopOrdersReadyToTake();
+        List<Order> ordersByThisShop = shop.takeShopOrdersReadyToTake();
         if (ordersByThisShop.isEmpty()) {
             System.out.println("Your shop doesn't have any order.");
             return;
@@ -805,6 +821,8 @@ public final class SystemManager {
         allShopFromCart.forEach(shop -> {
             OrderContent orderContent = OrderContent.filterFromCustomerCart(shop, cart);
             orders.add(new Order(customer, new Date(), orderContent));
+            customer.addOrder(new Order(customer, new Date(), orderContent));
+            shop.addOrder(new Order(customer, new Date(), orderContent));
         });
 
         // reduce the quantity in the shop when create order

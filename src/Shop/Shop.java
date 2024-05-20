@@ -24,6 +24,7 @@ public class Shop {
     @JsonManagedReference
     private final List<ItemStock> stock;
 
+
     @JsonIgnore
     private List<Order> orders;
 
@@ -54,7 +55,7 @@ public class Shop {
         if (id > currentId) currentId = id;
     }
 
-    public Shop( String name,  Address address) {
+    public Shop(String name,  Address address) {
         id = ++currentId;
         if ((currentId - 49_999) % 100_000 == 0) {
             currentId += 100_000 - 9999;
@@ -65,6 +66,7 @@ public class Shop {
         this.stock = new ArrayList<>();
         this.orders = new ArrayList<>();
     }
+
 
     public  String getName() {
         return name;
@@ -102,8 +104,8 @@ public class Shop {
         revenue += amount;
     }
 
-    public List<Order> getShopOrdersReadyToTake() {
-        return orders.stream()
+    public List<Order> takeShopOrdersReadyToTake() {
+        return this.orders.stream()
                 .filter(order ->order.getOrderState().equals(OrderState.CREATED))
                 .toList();
     }
